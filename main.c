@@ -5,6 +5,27 @@
 #include <string.h>
 #include <netinet/in.h>
 
+void printBuffer(char * buffer){
+	int i;
+	printf("\n");
+	for(i = 0; i < 512; i++){
+		printf("%.2x ", buffer[i]);
+		if(i%16 == 0 && i!=0)
+			printf("\n");
+	}
+}
+
+char * parseFileName(char * buffer){
+	int i;
+	char * fileName;
+	for(i = 0; buffer[i] != '\0'; i++)
+		*(fileName + i) = buffer[i];
+	*(fileName + i) = '\0';
+
+	printf("\n");
+	return fileName;
+}
+
 int main(){
 	int sock_udp, tam;
 	char buffer[512];
@@ -36,13 +57,26 @@ int main(){
 			if(tam == -1)
 				printf("Error al recibir");
 	
-			else
+			else{
 
-				printf("\n%s\n",buffer);
+				if(buffer[1] == 1){     //Opcode: Read request
+					printf("Leer\n");
+
+					char * fileName = parseFileName(buffer + 2);
+printf("size: %d\n", sizeof(fileName));
+					FILE * fp = fopen(fileName, "w");
+					fputc('c',fp);
+					fclose(fp);
+				}
+				
+				if(buffer[1] == 2){		//Opcode: Write request
+					printf("Escribir\n");
+
+				}
+			}
 
 	}	
 	}
 	
 }
 }
-
