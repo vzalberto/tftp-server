@@ -5,7 +5,7 @@
 #include <string.h>
 #include <netinet/in.h>
 
-void printBuffer(char * buffer){
+void printBuffer(char* buffer){
 	int i;
 	printf("\n");
 	for(i = 0; i < 512; i++){
@@ -15,7 +15,7 @@ void printBuffer(char * buffer){
 	}
 }
 
-char * parseFileName(char * buffer){
+/*char * parseFileName(char * buffer){
 	int i;
 	char * fileName;
 	for(i = 0; buffer[i] != '\0'; i++)
@@ -24,6 +24,37 @@ char * parseFileName(char * buffer){
 
 	printf("\n");
 	return fileName;
+}*/
+
+char* parseFileName(char* buffer) {
+  return strdup(buffer);
+}
+
+void sendData(int socket, struct sockaddr_in* addr, FILE* fp){
+	int n = 1, ack = 0;
+	unsigned char* data = malloc(514);
+
+	memset(msg, 0, 1);
+	memset(msg + 1, 3, 1);
+
+
+	
+	//if(ack == 0)
+	sendto(socket, msg, sizeof(msg), 0, (struct sockaddr*) addr, sizeof(*addr));
+
+	free(data);
+}
+
+void sendACK(int socket, struct sockaddr_in* addr, int prevACK){
+	//sendto();
+}
+
+void sendErr(int socket, struct sockaddr_in* addr){
+	unsigned char* msg = malloc(2);
+	memset(msg, 0, 1);
+	memset(msg + 1, 5, 1);
+	sendto(socket, msg, sizeof(msg), 0, (struct sockaddr*) addr, sizeof(*addr));
+	free(msg);
 }
 
 int main(){
@@ -53,19 +84,36 @@ int main(){
 		{
 		while(1){
 		int n = sizeof(cliente);
-			tam = recvfrom(sock_udp, buffer, 512,0,(struct sockaddr*)&cliente,&n);
+			tam = recvfrom(sock_udp, buffer, 512,0,(struct sockaddr*)&cliente,(socklen_t*)&n);
 			if(tam == -1)
 				printf("Error al recibir");
 	
 			else{
 
 				if(buffer[1] == 1){     //Opcode: Read request
-					printf("Leer\n");
+					printf("GET ");
 
-					char * fileName = parseFileName(buffer + 2);
-printf("size: %d\n", sizeof(fileName));
-					FILE * fp = fopen(fileName, "w");
-					fputc('c',fp);
+					char* fileName = parseFileName(buffer + 2);
+					printf("%s\n", fileName);
+
+					FILE* fp = fopen(fileName, "r");
+
+					if(fp != NULL){
+
+						unsigned char* dataPacket = malloc(516);
+
+						memset(dataPacket, 0, 1);
+						memset(dataPacket + 1, 3, 1);
+						memcpy(dataPacket + 2, fileName, 8);
+
+						sendData(sock_udp, &cliente, dataPacket);
+
+						free(dataPacket);
+
+					}
+					else
+						//send opcode 5
+						sendErr(sock_udp, &cliente);
 					fclose(fp);
 				}
 				
