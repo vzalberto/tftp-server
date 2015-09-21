@@ -30,19 +30,42 @@ char* parseFileName(char* buffer) {
   return strdup(buffer);
 }
 
-void sendData(int socket, struct sockaddr_in* addr, FILE* fp){
-	int n = 1, ack = 0;
-	unsigned char* data = malloc(514);
+void setBlockNum(unsigned char* msg, unsigned short blockNum){
+	unsigned int b0,b1;
+
+	b0 = (blockNum);
+	b1 = (blockNum >> 8);
+
+	memset(msg + 3, b0, 1);
+	memset(msg + 2, b1, 1);
+
+}
+
+void sendData(int socket, struct sockaddr_in* addr, FILE* fp, int blockSize){
+	int n = 1, ack;
+	unsigned short nblock=1;
+	unsigned char* msg = malloc(516);
+	unsigned char* data = malloc(512);
 
 	memset(msg, 0, 1);
 	memset(msg + 1, 3, 1);
 
+	while(n != EOF){
+		n=fread (data, 1, blockSize, fp);
+		if (n == 0)
+				break;
 
-	
+		setBlockNum(msg, nblock++);
+		memcpy(msg + 4, data, 512);
+
+
 	//if(ack == 0)
-	sendto(socket, msg, sizeof(msg), 0, (struct sockaddr*) addr, sizeof(*addr));
+	sendto(socket, msg, 516, 0, (struct sockaddr*) addr, sizeof(*addr));
+
+	}
 
 	free(data);
+	free(msg);
 }
 
 void sendACK(int socket, struct sockaddr_in* addr, int prevACK){
@@ -106,7 +129,7 @@ int main(){
 						memset(dataPacket + 1, 3, 1);
 						memcpy(dataPacket + 2, fileName, 8);
 
-						sendData(sock_udp, &cliente, dataPacket);
+						sendData(sock_udp, &cliente, fp, 512);
 
 						free(dataPacket);
 
@@ -114,6 +137,7 @@ int main(){
 					else
 						//send opcode 5
 						sendErr(sock_udp, &cliente);
+
 					fclose(fp);
 				}
 				
