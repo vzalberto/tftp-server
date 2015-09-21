@@ -60,6 +60,7 @@ void sendData(int socket, struct sockaddr_in* addr, FILE* fp, int blockSize){
 
 
 	//if(ack == 0)
+	
 	sendto(socket, msg, 516, 0, (struct sockaddr*) addr, sizeof(*addr));
 
 	}
