@@ -42,21 +42,27 @@ void setBlockNum(unsigned char* msg, unsigned short blockNum){
 }
 
 void sendData(int socket, struct sockaddr_in* addr, FILE* fp, int blockSize){
-	int n = 1, ack;
+	int n = 1, ack, i;
 	unsigned short nblock=1;
 	unsigned char* msg = malloc(516);
 	unsigned char* data = malloc(512);
 
 	memset(msg, 0, 1);
-	memset(msg + 1, 3, 1);
+	memset(msg + 1, 3, 1); //opcode : 1
 
+		int bytes = 0;
 	while(n != EOF){
-		n=fread (data, 1, blockSize, fp);
-		if (n == 0)
-				break;
+		for(i = 0; i < 512 && n != EOF; i++){
+			n=fgetc(fp);
+			memset(data + (bytes++), n, 1);
+		}
+
+		printf("\bytes: %d", bytes);
 
 		setBlockNum(msg, nblock++);
-		memcpy(msg + 4, data, 512);
+		memcpy(msg + 4, data, n);
+
+		printf("\nblock: %d\nbytes: %d", nblock, sizeof(data));
 
 
 	//if(ack == 0)
@@ -124,19 +130,11 @@ int main(){
 
 					if(fp != NULL){
 
-						unsigned char* dataPacket = malloc(516);
-
-						memset(dataPacket, 0, 1);
-						memset(dataPacket + 1, 3, 1);
-						memcpy(dataPacket + 2, fileName, 8);
-
 						sendData(sock_udp, &cliente, fp, 512);
-
-						free(dataPacket);
 
 					}
 					else
-						//send opcode 5
+						//send opcode 5 (File not found)
 						sendErr(sock_udp, &cliente);
 
 					fclose(fp);
