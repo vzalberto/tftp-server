@@ -50,26 +50,18 @@ void sendData(int socket, struct sockaddr_in* addr, FILE* fp, int blockSize){
 	memset(msg, 0, 1);
 	memset(msg + 1, 3, 1); //opcode : 1
 
-		int bytes = 0;
+	int sentbytes = 0;
+
 	while(n != EOF){
-		for(i = 0; i < 512 && n != EOF; i++){
-			n=fgetc(fp);
-			memset(data + (bytes++), n, 1);
+		n = fread(data, 1, 512, fp);
+		if(n == 0) break;
+		memcpy(msg + 4, data, n);
+		setBlockNum(msg, nblock++);
+
+		sendto(socket, msg, 4 + n, 0, (struct sockaddr*) addr, sizeof(*addr));
 		}
 
-		printf("\bytes: %d", bytes);
-
-		setBlockNum(msg, nblock++);
-		memcpy(msg + 4, data, n);
-
-		printf("\nblock: %d\nbytes: %d", nblock, sizeof(data));
-
-
 	//if(ack == 0)
-	
-	sendto(socket, msg, 516, 0, (struct sockaddr*) addr, sizeof(*addr));
-
-	}
 
 	free(data);
 	free(msg);
