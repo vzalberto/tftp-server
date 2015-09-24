@@ -41,16 +41,20 @@ void setBlockNum(unsigned char* msg, unsigned short blockNum){
 
 }
 
+void sendDataPacket(int socket, unsigned char* msg){
+	memset(msg, 0, 1);
+	memset(msg + 1, 3, 1);
+	setBlockNum(msg, nBlock);
+}
+
 void sendData(int socket, struct sockaddr_in* addr, FILE* fp, int blockSize){
-	int n = 1, ack, i;
+	int n = 1, ack, i, sentBytes=0;
 	unsigned short nblock=1;
 	unsigned char* msg = malloc(516);
 	unsigned char* data = malloc(512);
 
 	memset(msg, 0, 1);
 	memset(msg + 1, 3, 1); //opcode : 1
-
-	int sentbytes = 0;
 
 	while(n != EOF){
 		n = fread(data, 1, 512, fp);
@@ -59,16 +63,34 @@ void sendData(int socket, struct sockaddr_in* addr, FILE* fp, int blockSize){
 		setBlockNum(msg, nblock++);
 
 		sendto(socket, msg, 4 + n, 0, (struct sockaddr*) addr, sizeof(*addr));
+		sentBytes+=n;
 		}
-
+printf("\nsent: %d bytes to \n",sentBytes);
 	//if(ack == 0)
 
 	free(data);
 	free(msg);
 }
 
-void sendACK(int socket, struct sockaddr_in* addr, int prevACK){
+void sendACK(int socket, struct sockaddr_in* addr, int ref){
 	//sendto();
+	unsigned char* msg = malloc(4);
+	memset(msg, 0, 1);
+	memset(msg + 1, 4, 1);
+	setBlockNum(msg, ref);
+	sendto(socket, msg, 4, 0, (struct sockaddr*)addr, sizeof(*addr));	
+	free(msg);
+}
+
+void sendDataPacket(int socket, struct sockaddr_in* addr, int ref, unsigned char* data, int dataSize){
+	unsigned char* msg = malloc(516);
+
+	memset(msg, 0, 1);
+	memset(msg + 1, 1, 1);
+	setBlockNum(msg, ref);
+	memcpy(msg + 4, data, dataSize);
+	sendto(socket, msg, dataSize, 0, (struct sockaddr*) addr, sizeof(*addr));
+	free(msg);
 }
 
 void sendErr(int socket, struct sockaddr_in* addr){
