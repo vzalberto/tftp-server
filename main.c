@@ -5,6 +5,21 @@
 #include <string.h>
 #include <netinet/in.h>
 
+struct tftpACK{
+	unsigned short opcode;
+	unsigned short block;
+};
+
+void printMSG(unsigned char* msg,int n){
+	int i;
+	for(i = 0; i < n; i++){
+		printf("%2X ", msg[i]);
+		if(i != 0 &&i % 16 == 0)
+			printf("\n");
+	}
+	printf("\n");
+}
+
 char* parseFileName(char* buffer) {
   return strdup(buffer);
 }
@@ -63,7 +78,7 @@ int hasArrived(int socket, struct sockaddr_in* addr, unsigned short ref){
 	int n;
 	n = sizeof(addr);
 
-	if(recvfrom(socket, msg, 512, 0, (struct sockaddr*) cliente, &n) <0){
+	if(recvfrom(socket, msg, 512, 0, (struct sockaddr*) cliente, (socklen_t*)&n) <0){
 		perror("Error al recibir");
 		return -1;
 	}
@@ -85,6 +100,54 @@ void sendZero(int socket, struct sockaddr_in* addr, unsigned short nblock, unsig
 	sendDataPacket(socket, addr, nblock, data, 512, msg);
 }
 
+int sendData(int socket, struct sockaddr_in* addr, FILE* fp, int blocksize){
+
+	int sendNext, nblock, n, sentBytes, ackbytes;
+
+	nblock = 0;
+	sendNext = 1;
+	n = sizeof(addr);
+
+	unsigned char* data = malloc(512);
+	unsigned char* msg = malloc(512);
+
+	struct sockaddr_in* cliente;
+	struct tftpACK ack;
+
+	do{
+		if(sendNext){
+
+			n = fread(data, 1, blocksize, fp);
+			if(n == 0) break;
+
+			sendDataPacket(socket, addr, ++nblock, data, (4 + n), msg);
+			sentBytes++;
+			sendNext = 0;
+		}
+
+		ackbytes = recvfrom(socket, &ack, 4, 0, (struct sockaddr*) cliente, (socklen_t*)&n);
+		if(ackbytes <0){
+			perror("Error al recibir");
+			return -1;
+		}
+
+		printf("\nACK is here");
+		printf("\nblockno: %d", ntohs(ack.block));
+		if(ntohs(ack.block) == nblock)
+			sendNext = 1;
+
+	}while(n != EOF);
+
+	if(sentBytes % 512 == 0) sendZero(socket, addr, nblock, msg);
+	printf("\nsent: %d bytes to \n",sentBytes);
+
+	free(data);
+	free(msg);
+
+	return sentBytes;
+}
+
+/*
 void sendData(int socket, struct sockaddr_in* addr, FILE* fp, int blockSize){
 	int n = 1, ack, i, sentBytes=0, sendNext = 1;
 	unsigned short nblock=1;
@@ -96,7 +159,9 @@ void sendData(int socket, struct sockaddr_in* addr, FILE* fp, int blockSize){
 		n = fread(data, 1, 512, fp);
 		if(n == 0) break;
 
-		if(sendNext){
+
+
+		while(sendNext){
 
 			sendDataPacket(socket, addr, nblock, data, (4 + n), msg);
 
@@ -106,12 +171,15 @@ void sendData(int socket, struct sockaddr_in* addr, FILE* fp, int blockSize){
 		
 		sendNext = hasArrived (socket, addr, nblock++);
 	}
+
+
+
 		if(sentBytes % 512 == 0) sendZero(socket, addr, nblock, msg);
 		printf("\nsent: %d bytes to \n",sentBytes);
 
 		free(data);
 		free(msg);
-}
+}*/
 
 void sendErr(int socket, struct sockaddr_in* addr){
 	unsigned char* msg = malloc(2);
