@@ -10,6 +10,12 @@ struct tftpACK{
 	unsigned short block;
 };
 
+struct dataPacket{
+	unsigned short opcode;
+	unsigned short blocknum;
+	unsigned char data[512];
+};
+
 void printMSG(unsigned char* msg,int n){
 	int i;
 	for(i = 0; i < n; i++){
@@ -58,6 +64,41 @@ void sendACK(int socket, struct sockaddr_in* addr, int ref){
 	sendto(socket, msg, 4, 0, (struct sockaddr*)addr, sizeof(*addr));
 
 	free(msg);
+}
+
+int recvData(int socket, struct sockaddr_in* addr, FILE* fp, int blocksize){
+	int n, done, block=1, bytesWritten=0, bytes;
+	n = sizeof(addr);
+	done = 0;
+
+	struct dataPacket data;
+
+	do{
+		bytes = recvfrom(socket, &data, 512, 0, (struct sockaddr*) addr, (socklen_t*)&n);
+		if(bytes < 0){
+			perror("Error al recibir");
+			return -1;
+		}
+
+		if(ntohs(data.opcode) == 3 && ntohs(data.blocknum) == block){
+
+			printf("Received: %d bytes on %d packets\n", bytes, block);
+			int wrote=fwrite(data.data, 1, bytes, fp);
+			printf("Wrote: %d\n", wrote);
+				
+			sendACK(socket, addr, block++);
+
+			bytesWritten+=bytes;
+
+			if(bytes < blocksize)
+				done = 1;
+		}
+
+	}while(!done);
+	
+	printf("\nwrote: %d bytes",bytesWritten);
+
+	return bytesWritten;
 }
 
 void sendDataPacket(int socket, struct sockaddr_in* addr, unsigned short ref, unsigned char* data, int dataSize, unsigned char* msg){
@@ -240,10 +281,29 @@ int main(){
 						sendErr(sock_udp, &cliente);
 
 					fclose(fp);
+					main();
 				}
 				
 				if(buffer[1] == 2){		//Opcode: Write request
-					printf("Escribir\n");
+					printf("PUT\n");
+
+					char* fileName = parseFileName(buffer + 2);
+					printf("%s\n", fileName);
+
+					FILE* fp = fopen(fileName, "wb");
+
+					if(fp != NULL){
+
+						sendACK(sock_udp, &cliente, 0);
+						recvData(sock_udp, &cliente, fp, 512);
+
+					}
+
+					else
+						sendErr(sock_udp, &cliente);
+
+					fclose(fp);
+
 
 				}
 			}
