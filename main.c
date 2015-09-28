@@ -74,7 +74,7 @@ int recvData(int socket, struct sockaddr_in* addr, FILE* fp, int blocksize){
 	struct dataPacket data;
 
 	do{
-		bytes = recvfrom(socket, &data, 512, 0, (struct sockaddr*) addr, (socklen_t*)&n);
+		bytes = recvfrom(socket, &data, 516, 0, (struct sockaddr*) addr, (socklen_t*)&n);
 		if(bytes < 0){
 			perror("Error al recibir");
 			return -1;
@@ -83,7 +83,7 @@ int recvData(int socket, struct sockaddr_in* addr, FILE* fp, int blocksize){
 		if(ntohs(data.opcode) == 3 && ntohs(data.blocknum) == block){
 
 			printf("Received: %d bytes on %d packets\n", bytes, block);
-			int wrote=fwrite(data.data, 1, bytes, fp);
+			int wrote=fwrite(data.data, 1, bytes-4, fp);
 			printf("Wrote: %d\n", wrote);
 				
 			sendACK(socket, addr, block++);
