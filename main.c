@@ -162,7 +162,7 @@ int sendData(int socket, struct sockaddr_in* addr, FILE* fp, int blocksize){
 			if(n == 0) break;
 
 			sendDataPacket(socket, addr, ++nblock, data, (4 + n), msg);
-			sentBytes++;
+			sentBytes+=n;
 			sendNext = 0;
 		}
 
@@ -222,10 +222,12 @@ void sendData(int socket, struct sockaddr_in* addr, FILE* fp, int blockSize){
 		free(msg);
 }*/
 
-void sendErr(int socket, struct sockaddr_in* addr){
+void sendErr(int socket, struct sockaddr_in* addr, unsigned short err){
 	unsigned char* msg = malloc(2);
 	memset(msg, 0, 1);
 	memset(msg + 1, 5, 1);
+	memset(msg + 2, 0, 1);
+	memset(msg + 3, err, 1);
 	sendto(socket, msg, sizeof(msg), 0, (struct sockaddr*) addr, sizeof(*addr));
 	free(msg);
 }
@@ -278,7 +280,7 @@ int main(){
 					}
 					else
 						//send opcode 5 (File not found)
-						sendErr(sock_udp, &cliente);
+						sendErr(sock_udp, &cliente, 1);
 
 					fclose(fp);
 					main();
@@ -300,10 +302,10 @@ int main(){
 					}
 
 					else
-						sendErr(sock_udp, &cliente);
+						sendErr(sock_udp, &cliente, 0);
 
 					fclose(fp);
-
+					main();
 
 				}
 			}
