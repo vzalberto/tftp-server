@@ -232,6 +232,22 @@ void sendErr(int socket, struct sockaddr_in* addr, unsigned short err){
 	free(msg);
 }
 
+int fileExists(const char* filename){
+	FILE* fp;
+	fp = fopen(filename, "r");
+
+	if(fp != NULL)	return 1;
+	else 			return 0;
+}
+
+int parseTransferMode(unsigned char* msg){
+	const char* test;
+	test = strcasestr((const char*)msg, (const char*)"octect");
+
+	if(test != NULL)	return 1; //octet transfer mode
+	else				return 0; //Ascii transfer mode
+}
+
 int main(){
 	int sock_udp, tam;
 	char buffer[512];
@@ -271,7 +287,16 @@ int main(){
 					char* fileName = parseFileName(buffer + 2);
 					printf("%s\n", fileName);
 
-					FILE* fp = fopen(fileName, "rb");
+					FILE* fp;
+
+
+					//is this good practice?  
+
+					if(parseTransferMode((unsigned char*)buffer))	
+						fp = fopen(fileName, "rb");
+					else
+						fp = fopen(fileName, "r");
+
 
 					if(fp != NULL){
 
@@ -283,7 +308,7 @@ int main(){
 						sendErr(sock_udp, &cliente, 1);
 
 					fclose(fp);
-					main();
+					main();   //I KNOW, THIS IS A SIN
 				}
 				
 				if(buffer[1] == 2){		//Opcode: Write request
@@ -292,7 +317,14 @@ int main(){
 					char* fileName = parseFileName(buffer + 2);
 					printf("%s\n", fileName);
 
-					FILE* fp = fopen(fileName, "wb");
+					FILE* fp;
+
+//reusing code is definitely not good practice :P
+
+					if(parseTransferMode((unsigned char*)buffer))	
+						fp = fopen(fileName, "wb");
+					else
+						fp = fopen(fileName, "w");
 
 					if(fp != NULL){
 
